@@ -1,0 +1,6 @@
+
+.DS_Store
+__pycache__/RBP_functions.cpython-35.pyc
+FiberBank_sequences2.fasta
+*.fasta
+*.txt
