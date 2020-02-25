@@ -22,6 +22,8 @@ import matplotlib.pyplot as plt
 from Bio.Blast import NCBIWWW, NCBIXML
 from Bio import SeqIO, Entrez, pairwise2
 from Bio.SubsMat import MatrixInfo as matlist
+from sklearn.model_selection import GridSearchCV, GroupKFold
+from sklearn.metrics import accuracy_score, make_scorer, f1_score, precision_score, recall_score
 
 
 # DNA FEATURES
@@ -407,6 +409,94 @@ def zscale(sequence):
     encoding = [z1/len(sequence), z2/len(sequence), z3/len(sequence), z4/len(sequence), z5/len(sequence)]
     
     return encoding
+
+
+# GROUPING FOR GROUP K FOLD CV
+# --------------------------------------------------
+def define_groups(matrix, threshold):
+    # make groups of sequences under identity threshold
+    groups_dict = {}
+    groups_list = []
+    for i in range(matrix.shape[0]):
+        for j in range(i+1, matrix.shape[1]):
+            if (matrix[i,j] >= threshold) & (i not in groups_list) & (j not in groups_list) & (i not in groups_dict.keys()):
+                groups_dict[i] = [j]
+                groups_list.append(j)
+            elif (matrix[i,j] >= threshold) & (i not in groups_list) & (j not in groups_list) & (i in groups_dict.keys()):
+                groups_dict[i].append(j)
+                groups_list.append(j)
+
+# assign group numbers to clusters
+groups_array = np.zeros(matrix.shape[0])
+groups_index = 1
+    for key in groups_dict.keys():
+        groups_array[key] = groups_index
+        for item in groups_dict[key]:
+            groups_array[item] = groups_index
+        groups_index += 1
+
+# assign group numbers to leftover sequences not in any cluster
+for i,item in enumerate(groups_array):
+    if item == 0:
+        groups_array[i] = groups_index
+        groups_index += 1
+    
+    return groups_array
+
+
+# NESTED CROSS-VALIDATION WITH GROUPKFOLD
+# --------------------------------------------------
+def NestedGroupKFold(model, X, y, parameter_grid, groups, class_weights, scorer=make_scorer(accuracy_score), 
+                     inner_cv=GroupKFold(n_splits=4), outer_cv=GroupKFold(n_splits=4)):
+    """
+    Implements a nested version of GroupKFold cross-validation using GridSearchCV to evaluate models 
+    that need hyperparameter tuning in settings where different groups exist in the available data.
+    
+    Dependencies: sklearn.model_selection, sklearn.metrics, numpy
+    
+    Input:
+    - X, y: features and labels (must be NumPy arrays).
+    - model, parameter_grid: the model instance and its parameter grid to be optimized.
+    - groups: the groups to use in both inner- and outer loop.
+    - scorer: the scoring to use in inner loop (default: accuracy).
+    - inner_cv, outer_cv: the iterators for both CV-loops (default: GroupKFold(n_splits=4))
+    - class_weights: class weights to account for class imbalance in performance measurements
+    
+    Output: array of scores for each CV-run (same output as cross_val_score of scikit-learn).
+    """
+    # define empty matrix to store performances (n CV runs and four performance metrics)
+    n_splits_outer = outer_cv.get_n_splits()
+    performances = np.zeros((n_splits_outer, 4))
+    
+    # define outer loop
+    loop = 0
+    for train_outer, test_outer in outer_cv.split(X, y, groups):
+        X_train, X_test = X[train_outer], X[test_outer]
+        y_train, y_test = y[train_outer], y[test_outer]
+        groups_train, groups_test = groups_array[train_outer], groups_array[test_outer]
+        
+        # define inner loop (in GridSearchCV)
+        tuned_model = GridSearchCV(model, cv=inner_cv, param_grid=parameter_grid, scoring=scorer)
+        tuned_model.fit(X_train, y_train, groups=groups_train)
+        
+        # make predictions for test set (outer loop)
+        y_pred = tuned_model.predict(X_test)
+        
+        # evaluate performance (factoring in class imbalance)
+        recall_list = list(recall_score(y_test, y_pred, average=None))
+        precision_list = list(precision_score(y_test, y_pred, average=None))
+        f1_list = list(f1_score(y_test, y_pred, average=None))
+        accuracy = accuracy_score(y_test, y_pred)
+        recall = sum([a*b for a,b in zip(recall_list, class_weights)])/sum(class_weights)
+        precision = sum([a*b for a,b in zip(precision_list, class_weights)])/sum(class_weights)
+        f1 = sum([a*b for a,b in zip(f1_list, class_weights)])/sum(class_weights)
+        performances[loop,:] = [accuracy, recall, precision, f1]
+        
+        # next loop
+        loop += 1
+    
+    average_performances = performances.mean(0)
+    return average_performances    
 
 
 # BLAST PREDICTOR & PLOT
