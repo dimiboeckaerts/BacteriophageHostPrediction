@@ -13,6 +13,7 @@ https://github.com/Superzchen/iFeature
 
 # IMPORT LIBRARIES
 # --------------------------------------------------
+import os
 import math
 import numpy as np
 import scipy as sp
@@ -22,6 +23,7 @@ import matplotlib.pyplot as plt
 from Bio.Blast import NCBIWWW, NCBIXML
 from Bio import SeqIO, Entrez, pairwise2
 from Bio.SubsMat import MatrixInfo as matlist
+from Bio.Blast.Applications import NcbiblastpCommandline
 from sklearn.model_selection import GridSearchCV, GroupKFold
 from sklearn.metrics import accuracy_score, make_scorer, f1_score, precision_score, recall_score
 
@@ -426,20 +428,20 @@ def define_groups(matrix, threshold):
                 groups_dict[i].append(j)
                 groups_list.append(j)
 
-# assign group numbers to clusters
-groups_array = np.zeros(matrix.shape[0])
-groups_index = 1
+    # assign group numbers to clusters
+    groups_array = np.zeros(matrix.shape[0])
+    groups_index = 1
     for key in groups_dict.keys():
         groups_array[key] = groups_index
         for item in groups_dict[key]:
             groups_array[item] = groups_index
         groups_index += 1
 
-# assign group numbers to leftover sequences not in any cluster
-for i,item in enumerate(groups_array):
-    if item == 0:
-        groups_array[i] = groups_index
-        groups_index += 1
+    # assign group numbers to leftover sequences not in any cluster
+    for i,item in enumerate(groups_array):
+        if item == 0:
+            groups_array[i] = groups_index
+            groups_index += 1
     
     return groups_array
 
@@ -473,7 +475,7 @@ def NestedGroupKFold(model, X, y, parameter_grid, groups, class_weights, scorer=
     for train_outer, test_outer in outer_cv.split(X, y, groups):
         X_train, X_test = X[train_outer], X[test_outer]
         y_train, y_test = y[train_outer], y[test_outer]
-        groups_train, groups_test = groups_array[train_outer], groups_array[test_outer]
+        groups_train, groups_test = groups[train_outer], groups[test_outer]
         
         # define inner loop (in GridSearchCV)
         tuned_model = GridSearchCV(model, cv=inner_cv, param_grid=parameter_grid, scoring=scorer)
@@ -497,6 +499,67 @@ def NestedGroupKFold(model, X, y, parameter_grid, groups, class_weights, scorer=
     
     average_performances = performances.mean(0)
     return average_performances    
+
+
+# LOCAL BLAST
+# --------------------------------------------------
+def blast_local(train_indices, test_indices, database):
+    """
+    This function performs a local BLASTp for given test_indices against a database consisting of
+    all train_inidices of some given database that has a column named 'protein_sequence'. Top hits
+    are converted to the corresponding numerical class and finally outputted 
+    
+    Dependencies: NcbiblastpCommandline (Bio.Blast.Applications), NCBIXML (Bio.Blast)
+    """
+    # define dictionary of classes
+    label_dict_species = {'Staphylococcus aureus': 0, 'Klebsiella pneumoniae': 1, 'Acinetobacter baumannii': 2,
+                          'Pseudomonas aeruginosa': 3, 'Escherichia coli': 4, 'Salmonella enterica': 5, 
+                          'Clostridium difficile': 6}
+    
+    # construct database against which to blast
+    temp_fasta = open('RBPlogodatabase.fasta', 'w')
+    for train_index in train_indices:
+        sequence = database['protein_sequence'][train_index]
+        host = database['host'][train_index]
+        temp_fasta.write('>'+host+'\n'+sequence+'\n')
+    temp_fasta.close()
+    
+    # loop over the sequences of the left out group
+    prediction_list = []
+    for test_index in test_indices:
+        # make temp fasta file for test sequence
+        test_sequence = database['protein_sequence'][test_index]
+        temp_fasta_test = open('testsequence.fasta', 'w')
+        temp_fasta_test.write('>'+str(test_index)+'\n'+test_sequence+'\n')
+        temp_fasta_test.close()
+        
+        # perform actual BLAST
+        blastp_cline = NcbiblastpCommandline(query='testsequence.fasta', subject='RBPlogodatabase.fasta', evalue=10, 
+                                        outfmt=5, out='resultlogo.xml')
+        stdout, stderr = blastp_cline()
+        
+        # save predictions
+        # check title of highest scoring match, title is host
+        blast_result = open('resultlogo.xml')
+        blast_record = NCBIXML.read(blast_result)
+        prediction = blast_record.descriptions[0].title
+        prediction = prediction.split(' ')[1:]
+        
+        # convert to one of keys
+        if len(prediction) > 2:
+            prediction = ' '.join(prediction[:2])
+        else:
+            prediction = ' '.join(prediction)
+        prediction_list.append(label_dict_species[prediction])
+
+        # remove temp fasta test file
+        os.remove('testsequence.fasta')
+        os.remove('resultlogo.xml')
+    
+    # remove temp fasta database
+    os.remove('RBPlogodatabase.fasta')
+    
+    return np.array(prediction_list)
 
 
 # BLAST PREDICTOR & PLOT
