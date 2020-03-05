@@ -23,9 +23,11 @@ import matplotlib.pyplot as plt
 from Bio.Blast import NCBIWWW, NCBIXML
 from Bio import SeqIO, Entrez, pairwise2
 from Bio.SubsMat import MatrixInfo as matlist
+from sklearn.preprocessing import label_binarize
 from Bio.Blast.Applications import NcbiblastpCommandline
 from sklearn.model_selection import GridSearchCV, GroupKFold
 from sklearn.metrics import accuracy_score, make_scorer, f1_score, precision_score, recall_score
+from sklearn.metrics import precision_recall_curve, auc
 
 
 # DNA FEATURES
@@ -464,7 +466,7 @@ def NestedGroupKFold(model, X, y, parameter_grid, groups, class_weights, scorer=
     - inner_cv, outer_cv: the iterators for both CV-loops (default: GroupKFold(n_splits=4))
     - class_weights: class weights to account for class imbalance in performance measurements
     
-    Output: array of scores for each CV-run (same output as cross_val_score of scikit-learn).
+    Output: average of scores over all CV-runs.
     """
     # define empty matrix to store performances (n CV runs and four performance metrics)
     n_splits_outer = outer_cv.get_n_splits()
@@ -498,7 +500,93 @@ def NestedGroupKFold(model, X, y, parameter_grid, groups, class_weights, scorer=
         loop += 1
     
     average_performances = performances.mean(0)
-    return average_performances    
+    return average_performances  
+
+def NestedGroupKFoldProba(model, X, y, parameter_grid, groups, class_weights, scorer=make_scorer(accuracy_score), 
+                     inner_cv=GroupKFold(n_splits=4), outer_cv=GroupKFold(n_splits=4)):
+    """
+    Implements a nested version of GroupKFold cross-validation using GridSearchCV to evaluate models 
+    that need hyperparameter tuning in settings where different groups exist in the available data.
+    
+    Dependencies: sklearn.model_selection, sklearn.metrics, numpy
+    
+    Input:
+    - X, y: features and labels (must be NumPy arrays).
+    - model, parameter_grid: the model instance and its parameter grid to be optimized.
+    - groups: the groups to use in both inner- and outer loop.
+    - scorer: the scoring to use in inner loop (default: accuracy).
+    - inner_cv, outer_cv: the iterators for both CV-loops (default: GroupKFold(n_splits=4))
+    - class_weights: class weights to account for class imbalance in performance measurements
+    
+    Output: cross-validated predicted class probabilities
+    """
+    # define empty matrix to store performances (n CV runs and four performance metrics)
+    n_classes = len(class_weights)
+    probabilities = np.zeros((X.shape[0], n_classes))
+    
+    # define outer loop
+    for train_outer, test_outer in outer_cv.split(X, y, groups):
+        X_train, X_test = X[train_outer], X[test_outer]
+        y_train, y_test = y[train_outer], y[test_outer]
+        groups_train, groups_test = groups[train_outer], groups[test_outer]
+        
+        # define inner loop (in GridSearchCV)
+        tuned_model = GridSearchCV(model, cv=inner_cv, param_grid=parameter_grid, scoring=scorer)
+        tuned_model.fit(X_train, y_train, groups=groups_train)
+        
+        # make predictions for test set (outer loop)
+        y_probs = tuned_model.predict_proba(X_test)
+        
+        for i, index in enumerate(test_outer):
+            probabilities[index,:] = y_probs[i,:]
+    
+    return probabilities  
+
+
+
+# NESTED CROSS-VALIDATION WITH GROUPKFOLD
+# --------------------------------------------------
+def multiclass_precision_recall(y_true, probas_pred, classes, make_plot=False):
+    """
+    A multiclass extension of the 'precision_recall_curve' function in Scikit-learn. Also includes a plotting
+    functionality and outputs the PR AUC score.
+    
+    Dependencies: matplotlib.pyplot, sklearn.preprocessing, sklearn.metrics
+    
+    Input:
+    - y-true: true labels
+    - probas_pred: multiclass probabilities
+    - classes: unique classes needed for binarization (not class weights or counts, see label_binarize in sklearn)
+    - make_plot: boolean (default: False)
+    
+    Output: if plot=False (default): P, R and AUC for every class (dicts); else: a figure.
+    """
+    # define needed variables
+    y_true_binary = label_binarize(y_true, classes)
+    n_classes = len(classes)
+    precision = dict()
+    recall = dict()
+    auc_scores = dict()
+    
+    # calculate P, R and AUC per class
+    for i in range(n_classes):
+        precision[i], recall[i], _ = precision_recall_curve(y_true_binary[:, i], probas_pred[:, i])
+        auc_scores[i] = auc(recall[i], precision[i])
+    
+    # make plot if asked and return results
+    if make_plot:
+        fig, ax = plt.subplots(figsize=(10,7))
+        for i in range(n_classes):
+            ax.plot(recall[i], precision[i], lw=2)
+            
+        ax.set_xlabel('Recall', size=12)
+        ax.set_ylabel('Precision', size=12)
+        ax.legend(classes)
+        fig.tight_layout()
+        return fig
+    
+    else:
+        return precision, recall, auc_scores
 
 
 # LOCAL BLAST
@@ -542,15 +630,20 @@ def blast_local(train_indices, test_indices, database):
         # check title of highest scoring match, title is host
         blast_result = open('resultlogo.xml')
         blast_record = NCBIXML.read(blast_result)
-        prediction = blast_record.descriptions[0].title
-        prediction = prediction.split(' ')[1:]
-        
-        # convert to one of keys
-        if len(prediction) > 2:
-            prediction = ' '.join(prediction[:2])
-        else:
-            prediction = ' '.join(prediction)
-        prediction_list.append(label_dict_species[prediction])
+        try:
+            prediction = blast_record.descriptions[0].title
+            prediction = prediction.split(' ')[1:]
+            
+            # convert to one of keys
+            if len(prediction) > 2:
+                prediction = ' '.join(prediction[:2])
+            else:
+                prediction = ' '.join(prediction)
+            prediction_list.append(label_dict_species[prediction])
+            
+        except IndexError:
+            prediction = 'None'
+            prediction_list.append(9)
 
         # remove temp fasta test file
         os.remove('testsequence.fasta')
