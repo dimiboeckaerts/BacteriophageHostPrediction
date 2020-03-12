@@ -15,6 +15,7 @@ https://github.com/Superzchen/iFeature
 # --------------------------------------------------
 import os
 import math
+import warnings
 import numpy as np
 import scipy as sp
 import datetime as dt
@@ -544,7 +545,7 @@ def NestedGroupKFoldProba(model, X, y, parameter_grid, groups, class_weights, sc
 
 
 
-# NESTED CROSS-VALIDATION WITH GROUPKFOLD
+# PRECISION AND RECALL IN MULTICLASS SETTING
 # --------------------------------------------------
 def multiclass_precision_recall(y_true, probas_pred, classes, make_plot=False):
     """
@@ -587,6 +588,54 @@ def multiclass_precision_recall(y_true, probas_pred, classes, make_plot=False):
     
     else:
         return precision, recall, auc_scores
+    
+
+def multiclass_average_PR(y_true, probas_pred, classes, class_weights):
+    """
+    Computes a weighted macro avegerage for precision and recall over different thresholds.
+    
+    Dependencies: numpy
+    
+    Input:
+    - y_true
+    - probas_pred: probabilities outputted by classifier
+    - classes: unique list of classes (not class weights/counts)
+    - class_weights: instance counts per class
+    """
+    # ignore undefined metric warning
+    warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
+
+
+    
+    # binarize & compute pred
+    y_true_binary = label_binarize(y_true, classes)
+    n_classes = len(classes)
+    thresholds = np.arange(0, 1, 0.005)
+    P_classes = np.zeros((n_classes, len(thresholds)))
+    R_classes = np.zeros((n_classes, len(thresholds)))
+
+    # loop over classes
+    for i in range(n_classes):
+        y_test = y_true_binary[:,i]
+        previous_P = 0
+        for j, thres in enumerate(thresholds):
+            # select class column and threshold probabilities
+            y_pred = (probas_pred[:,i] > thres)*1
+            
+            # compute P, R
+            recall_i = recall_score(y_test, y_pred)
+            precision_i = precision_score(y_test, y_pred)
+            if (precision_i == 0) & (previous_P == 1):
+                precision_i = 1
+            previous_P = precision_i
+            P_classes[i,j] = precision_i
+            R_classes[i,j] = recall_i
+        
+        # average over classes
+        P_average = np.average(P_classes, axis=0, weights=class_weights)
+        R_average = np.average(R_classes, axis=0, weights=class_weights)
+
+    return P_average, R_average 
 
 
 # LOCAL BLAST
