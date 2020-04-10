@@ -25,6 +25,7 @@ from Bio.Blast import NCBIWWW, NCBIXML
 from Bio import SeqIO, Entrez, pairwise2
 from Bio.SubsMat import MatrixInfo as matlist
 from sklearn.preprocessing import label_binarize
+from sklearn.exceptions import UndefinedMetricWarning
 from Bio.Blast.Applications import NcbiblastpCommandline
 from sklearn.model_selection import GridSearchCV, GroupKFold
 from sklearn.metrics import accuracy_score, make_scorer, f1_score, precision_score, recall_score
@@ -524,6 +525,7 @@ def NestedGroupKFoldProba(model, X, y, parameter_grid, groups, class_weights, sc
     # define empty matrix to store performances (n CV runs and four performance metrics)
     n_classes = len(class_weights)
     probabilities = np.zeros((X.shape[0], n_classes))
+    preds = np.zeros(X.shape[0])
     
     # define outer loop
     for train_outer, test_outer in outer_cv.split(X, y, groups):
@@ -537,11 +539,13 @@ def NestedGroupKFoldProba(model, X, y, parameter_grid, groups, class_weights, sc
         
         # make predictions for test set (outer loop)
         y_probs = tuned_model.predict_proba(X_test)
+        y_preds = tuned_model.predict(X_test)
         
         for i, index in enumerate(test_outer):
             probabilities[index,:] = y_probs[i,:]
+            preds[index] = y_preds[i]
     
-    return probabilities  
+    return probabilities, preds
 
 
 
@@ -605,8 +609,6 @@ def multiclass_average_PR(y_true, probas_pred, classes, class_weights):
     # ignore undefined metric warning
     warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
 
-
-    
     # binarize & compute pred
     y_true_binary = label_binarize(y_true, classes)
     n_classes = len(classes)

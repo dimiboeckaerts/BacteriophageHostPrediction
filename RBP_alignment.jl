@@ -55,7 +55,6 @@ function calculate_perc_identity(sequence1, sequence2)
     return count_matches(aln) / min(length(sequence1), length(sequence2))
 end
 
-
 # construct alignment score matrix
 function calculate_score_matrix(file)
     """
@@ -82,30 +81,41 @@ function calculate_score_matrix(file)
     return kernel_matrix
 end
 
+
 # TIMING TEST
 # --------------------------------------------------
 test_seq1 = aa"MTDIITNVVIGMPSQLFTMARSFKAVANGKIYIGKIDTDPVNPENQIQVYVENEDGSHVPASQPIVINAAGYPVYNGQIVKFVTEQGHSMAVYDAYGSQQFYFQNVLKYDPDQFGPDLIEQLAQSGKYSQDNTKGDAMIGVKQPLPKAVLRTQHDKNKEAISILDFGV"
 test_seq2 = aa"MAITKIILQQMVTMDQNSITASKYPKYTVVLSNSISSITAADVTSAIESSKASGPAAKQSEINAKQSELNAKDSENEAEISATSSQQSATQSASSATASANSAKAAKTSETNANNSKNAAKTSETNAASSASSASSFATAAENSARAAKTSETNAGNSAQAADASKTA"
 
 scoremodel = AffineGapScoreModel(BLOSUM62, gap_open=-10, gap_extend=-1)
-res = pairalign(LocalAlignment(), seq1, seq2, scoremodel);
+res = pairalign(LocalAlignment(), test_seq1, test_seq2, scoremodel);
 aln = alignment(res)
+sc = score(res)
 count_matches(aln)
 
 
 # COMPUTE KERNEL AND SAVE MATRIX TO FILE
 # --------------------------------------------------
-seqfile = "/Users/Dimi/Documents/GitHub_Local/BacteriophageHostPrediction/FiberBank_sequences2.fasta"
+seqfile = "/Users/Dimi/Documents/GitHub_Local/BacteriophageHostPrediction/RBP_sequences.fasta"
 m = calculate_score_matrix(seqfile)
 size(m)
 writedlm("/Users/Dimi/Documents/GitHub_Local/BacteriophageHostPrediction/RBP_alignmentscores.txt", m)
 matrix = readdlm("/Users/Dimi/Documents/GitHub_Local/BacteriophageHostPrediction/RBP_alignmentcores.txt")
 
 
-# BLAST STUFF
+# COMPUTE ALIGNMENT FEATURES BASED ON RANDOM SAMPLES
 # --------------------------------------------------
-using BioTools.BLAST
-sequence = aa"MSTITQFPSGNTQYRIEFDYLARTFVVVTLVNSSNPTLNRVLEVGRDYRFLNPTMIEMLVDQSGFDIVRIHRQTGTDLVVDFRNGSVLTASDLTTAELQAIHIAEEGRDQTVDLAKEYADAAGSSAGNAKDSEDEARRIAESIRAAGLIGYMTRRSFEKGYNVTTWSEVLLWEEDGDYYRWDGTLPKNVPAGSTPETSGGIGLGAWVSVGDAALRSQISNPEGAILYPELHRARWLDEKDARGWGAKGDGVTDDTAALTSALNDTPVGQKINGNGKTYKVTSLPDISRFINTRFVYERIPGQPLYYASEEFVQGELFKITDTPYYNAWPQDKAFVYENVIYAPYMGSDRHGVSRLHVSWVKSGDDGQTWSTPEWLTDLHPDYPTVNYHCMSMGVCRNRLFAMIETRTLAKNALTNCALWDRPMSRSLHLTGGITKAANQRYATIHVPDHGLFVGDFVNFSNSAVTGVSGDMTVATVIDKDNFTVLTPNQQTSDLNNAGKNWHMGTSFHKSPWRKTDLGLIPSVTEVHSFATIDNNGFAMGYHQGDVAPREVGLFYFPDAFNSPSNYVRRQIPSEYEPDASEPCIKYYDGVLYLITRGTRGDRLGSSLHRSRDIGQTWESLRFPHNVHHTTLPFAKVGDDLIMFGSERAENEWEAGAPDDRYKASYPRTFYARLNVNNWNADDIEWVNITDQIYQGGIVNSGVGVGSVVVKDNYIYYMFGGEDHFNPWTYGDNSAKDPFKSDGHPSDLYCYKMKIGPDNRVSRDFRYGAVPNRAVPVFFDTNGVRTVPAPMEFTGDLGLGHVTIRASTSSNIRSEVLMEGEYGFIGKSIPTDNPAGQRIIFCGGEGTSSTTGAQITLYGANNTDSRRIVYNGDEHLFQSADVKPYNDNVTALGGPSNRFTTAYLGSNPIVTSNGERKTEPVVFDDAFLDAWGDVHYIMYQWLDAVQLKGNDARIHFGVIAQQIRDVFIAHGLMDENSTNCRYAVLCYDKYPRMTDTVFSHNEIVEHTDEEGNVTTTEEPVYTEVVIHEEGEEWGVRPDGIFFAEAAYQRRKLERIEARLSALEQK"
+seqfile = "/Users/Dimi/Documents/GitHub_Local/BacteriophageHostPrediction/RBP_sequences887.fasta"
+sequence_list = file_to_array(seqfile)
+feature_matrix = zeros(length(sequence_list), 14)
+p = Progress(Int64(round((length(sequence_list)*14), digits=0)))
+scoremodel = AffineGapScoreModel(BLOSUM62, gap_open=-10, gap_extend=-1)
+sample_list = [261, 591, 330, 458, 296, 497, 233, 378, 110, 830, 727, 67, 586, 588]
 
-blastp(sequence, "Users/Dimi/Desktop/testsequence.fasta")
+for i in 1:length(sequence_list), j in 1:length(sample_list)
+    res = pairalign(LocalAlignment(), sequence_list[i], sequence_list[sample_list[j]], scoremodel)
+    feature_matrix[i,j] = score(res)
+    next!(p)
+end
 
+writedlm("/Users/Dimi/Documents/GitHub_Local/BacteriophageHostPrediction/RBP_alignment_features.txt", feature_matrix)
