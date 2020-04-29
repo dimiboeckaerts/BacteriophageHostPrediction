@@ -5,6 +5,6 @@ This repository contains the code and database related to our manuscript submitt
 
 * <i>RBP_functions.py</i> is a Python script containing all the necessary manually implemented functions for the various analyses carried out in this study.
 
-* <RBP_alignment.jl> is a Julia script used to compute pairwise alignments between the sequences to explore the diversity and assess redundancy in the database.
+* <i>RBP_alignment.jl</i> is a Julia script used to compute pairwise alignments between the sequences to explore the diversity and assess redundancy in the database.
 
 * <i>RBP_host_prediction.ipynb</i> is an IPython notebook containing all the analyses, model constructions and evaluations described in Materials & Methods.
