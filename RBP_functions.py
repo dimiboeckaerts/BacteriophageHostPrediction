@@ -254,6 +254,10 @@ def CTDC(sequence):
 # PROTEIN FEATURE: TRANSITION
 # --------------------------------------------------
 def CTDT(sequence):
+    """
+    Every number in the encoding tells us as a percentage over all AA pairs, how many transitions
+    occured from group x to y or vice versa for a specific property p.
+    """
     group1 = {'hydrophobicity_PRAM900101': 'RKEDQN','hydrophobicity_ARGP820101': 'QSTNGDE',
               'hydrophobicity_ZIMJ680101': 'QNGSWTDERA','hydrophobicity_PONP930101': 'KPDESNQT',
               'hydrophobicity_CASG920101': 'KDEQPSRNTG','hydrophobicity_ENGD860101': 'RDKENQHYP',
