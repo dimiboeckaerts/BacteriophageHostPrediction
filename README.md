@@ -1,6 +1,8 @@
-# BacteriophageHostPrediction
-This repository contains the code and database related to our manuscript on predicting bacteriophage hosts based on receptor-binding proteins. This research is funded by a PhD fellowship strategic basic research from the Research Foundation – Flanders (FWO), grant number 1S69520N.
+# Predicting bacteriophage hosts based on sequences of annotated receptor-binding proteins
+This repository contains the code and database related to our manuscript on "Predicting bacteriophage hosts based on sequences of annotated receptor-binding proteins", published in Scientific Reports on 14 January 2021. This research is funded by a PhD fellowship strategic basic research from the Research Foundation – Flanders (FWO), grant number 1S69520N. Access the research paper below:
+https://www.nature.com/articles/s41598-021-81063-4
 
+More specifically, this repository contains the following files:
 * <i>RBP_database.csv</i> contains the collected RBP sequences as described in Materials & Methods.
 
 * <i>RBP_functions.py</i> is a Python script containing all the necessary manually implemented functions for the various analyses carried out in this study.
