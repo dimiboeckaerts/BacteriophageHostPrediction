@@ -6,3 +6,5 @@ FiberBank_sequences2.fasta
 *.txt
 *.png
 *.csv
+*.eps
+*.pyc

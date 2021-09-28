@@ -10,7 +10,6 @@ https://github.com/Superzchen/iFeature
 (Chen et al., 2018. Bioinformatics.)
 """
 
-
 # IMPORT LIBRARIES
 # --------------------------------------------------
 import os
@@ -207,48 +206,47 @@ def Count1(seq1, seq2):
 	return sum
 
 def CTDC(sequence):
-	group1 = {
-		'hydrophobicity_PRAM900101': 'RKEDQN',
-		'hydrophobicity_ARGP820101': 'QSTNGDE',
-		'hydrophobicity_ZIMJ680101': 'QNGSWTDERA',
-		'hydrophobicity_PONP930101': 'KPDESNQT',
-		'hydrophobicity_CASG920101': 'KDEQPSRNTG',
-		'hydrophobicity_ENGD860101': 'RDKENQHYP',
-		'hydrophobicity_FASG890101': 'KERSQD',
-		'normwaalsvolume': 'GASTPDC',
-		'polarity':        'LIFWCMVY',
-		'polarizability':  'GASDT',
-		'charge':          'KR',
-		'secondarystruct': 'EALMQKRH',
-		'solventaccess':   'ALFCGIVW'
-	}
-	group2 = {
-		'hydrophobicity_PRAM900101': 'GASTPHY',
-		'hydrophobicity_ARGP820101': 'RAHCKMV',
-		'hydrophobicity_ZIMJ680101': 'HMCKV',
-		'hydrophobicity_PONP930101': 'GRHA',
-		'hydrophobicity_CASG920101': 'AHYMLV',
-		'hydrophobicity_ENGD860101': 'SGTAW',
-		'hydrophobicity_FASG890101': 'NTPG',
-		'normwaalsvolume': 'NVEQIL',
-		'polarity':        'PATGS',
-		'polarizability':  'CPNVEQIL',
-		'charge':          'ANCQGHILMFPSTWYV',
-		'secondarystruct': 'VIYCWFT',
-		'solventaccess':   'RKQEND'
-	}
+    group1 = {
+        'hydrophobicity_PRAM900101': 'RKEDQN',
+        'hydrophobicity_ARGP820101': 'QSTNGDE',
+        'hydrophobicity_ZIMJ680101': 'QNGSWTDERA',
+        'hydrophobicity_PONP930101': 'KPDESNQT',
+        'hydrophobicity_CASG920101': 'KDEQPSRNTG',
+        'hydrophobicity_ENGD860101': 'RDKENQHYP',
+        'hydrophobicity_FASG890101': 'KERSQD',
+        'normwaalsvolume': 'GASTPDC',
+        'polarity':        'LIFWCMVY',
+        'polarizability':  'GASDT',
+        'charge':          'KR',
+        'secondarystruct': 'EALMQKRH',
+        'solventaccess':   'ALFCGIVW'
+    }
+    group2 = {
+        'hydrophobicity_PRAM900101': 'GASTPHY',
+        'hydrophobicity_ARGP820101': 'RAHCKMV',
+        'hydrophobicity_ZIMJ680101': 'HMCKV',
+        'hydrophobicity_PONP930101': 'GRHA',
+        'hydrophobicity_CASG920101': 'AHYMLV',
+        'hydrophobicity_ENGD860101': 'SGTAW',
+        'hydrophobicity_FASG890101': 'NTPG',
+        'normwaalsvolume': 'NVEQIL',
+        'polarity':        'PATGS',
+        'polarizability':  'CPNVEQIL',
+        'charge':          'ANCQGHILMFPSTWYV',
+        'secondarystruct': 'VIYCWFT',
+        'solventaccess':   'RKQEND'
+    }
 
-	property = ['hydrophobicity_PRAM900101', 'hydrophobicity_ARGP820101', 'hydrophobicity_ZIMJ680101', 'hydrophobicity_PONP930101',
-	'hydrophobicity_CASG920101', 'hydrophobicity_ENGD860101', 'hydrophobicity_FASG890101', 'normwaalsvolume',
-	'polarity', 'polarizability', 'charge', 'secondarystruct', 'solventaccess']
+    property = ['solventaccess'] # can be expanded to include other properties
+    encoding = []
 
-	for p in property:
-		c1 = Count1(group1[p], sequence) / len(sequence)
-		c2 = Count1(group2[p], sequence) / len(sequence)
-		c3 = 1 - c1 - c2
-		encoding = [c1, c2, c3]
+    for p in property:
+        c1 = Count1(group1[p], sequence) / len(sequence)
+        c2 = Count1(group2[p], sequence) / len(sequence)
+        c3 = 1 - c1 - c2
+        encoding = encoding + [c1, c2, c3]
         
-	return encoding
+    return encoding
 
 
 # PROTEIN FEATURE: TRANSITION
