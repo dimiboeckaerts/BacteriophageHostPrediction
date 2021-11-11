@@ -10,4 +10,6 @@ More specifically, this repository contains the following files:
 
 * <i>RBP_alignment.jl</i> is a Julia script used to compute pairwise alignments between the sequences to explore the diversity and assess redundancy in the database.
 
+* <i>RBP_alignmentscores.txt</i> is .txt file containing the alignment scores if you prefer not to compute them with the provided Julia script.
+
 * <i>RBP_host_prediction.ipynb</i> is an IPython notebook containing all the analyses, model constructions and evaluations described in Materials & Methods.
