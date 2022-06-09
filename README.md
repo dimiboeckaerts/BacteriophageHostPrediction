@@ -1,5 +1,5 @@
 # Predicting bacteriophage hosts based on sequences of annotated receptor-binding proteins
-This repository contains the code and database related to our manuscript "Predicting bacteriophage hosts based on sequences of annotated receptor-binding proteins", published in Scientific Reports on 14 January 2021. This research is funded by a PhD fellowship strategic basic research from the Research Foundation – Flanders (FWO), grant number 1S69520N. 
+This repository contains the code and database related to our manuscript "Predicting bacteriophage hosts based on sequences of annotated receptor-binding proteins", published in Scientific Reports (January 2021). This research is funded by a PhD fellowship strategic basic research from the Research Foundation – Flanders (FWO), grant number 1S69520N. 
 
 Access the research paper via the following link: https://www.nature.com/articles/s41598-021-81063-4
 
