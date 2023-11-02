@@ -13,3 +13,5 @@ More specifically, this repository contains the following files:
 * <i>RBP_alignmentscores.txt</i> is .txt file containing the alignment scores if you prefer not to compute them with the provided Julia script.
 
 * <i>RBP_host_prediction.ipynb</i> is an IPython notebook containing all the analyses, model constructions and evaluations described in Materials & Methods.
+
+Important notice: the code in this repository is provided as is and is no longer under active maintenance. Thank you for understanding.
